@@ -1,338 +1,237 @@
 "use client"
-
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { UserRound, FileText, Printer, Plus, Search, Filter } from "lucide-react"
+import { Plus, Trash } from "lucide-react"
+import Modal from "@/components/ui/modal/modal"
+import "./ReceptionPage.css"
+
+type Report = {
+  label: string
+  file: File | null
+}
+
+type Patient = {
+  id: string
+  name: string
+  aadhar: string
+  phone: string
+  partnerName: string
+  partnerAadhar: string
+  partnerPhone: string
+  dateOfCreation: string
+  reports: Report[]
+}
+
+let patientIdCounter = 1
 
 export default function ReceptionPage() {
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("register")
+  const [patient, setPatient] = useState<Patient>({
+    id: "",
+    name: "",
+    aadhar: "",
+    phone: "",
+    partnerName: "",
+    partnerAadhar: "",
+    partnerPhone: "",
+    dateOfCreation: "",
+    reports: []
+  })
+  const [reports, setReports] = useState<Report[]>([])
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+
+  const handleAddReport = () => {
+    setReports([...reports, { label: "", file: null }])
+  }
+
+  const handleRemoveReport = (index: number) => {
+    const newReports = reports.filter((_, i) => i !== index)
+    setReports(newReports)
+  }
+
+  const handleReportChange = (index: number, field: keyof Report, value: any) => {
+    const newReports = [...reports]
+    newReports[index][field] = value
+    setReports(newReports)
+  }
 
   const handleRegisterPatient = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!patient.name || !patient.aadhar || !patient.phone || !patient.partnerName || !patient.partnerAadhar || !patient.partnerPhone) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields."
+      })
+      return
+    }
+    const newPatient = {
+      ...patient,
+      id: `P${patientIdCounter++}`,
+      dateOfCreation: new Date().toISOString(),
+      reports
+    }
+    setPatients([...patients, newPatient])
     toast({
       title: "Patient Registered",
       description: "Patient has been successfully registered.",
     })
+    // Reset form
+    setPatient({
+      id: "",
+      name: "",
+      aadhar: "",
+      phone: "",
+      partnerName: "",
+      partnerAadhar: "",
+      partnerPhone: "",
+      dateOfCreation: "",
+      reports: []
+    })
+    setReports([])
   }
 
-  const handleGenerateReceipt = (e: React.FormEvent) => {
-    e.preventDefault()
-    toast({
-      title: "Receipt Generated",
-      description: "Receipt has been generated and is ready for printing.",
-    })
-  }
+  const filteredPatients = patients.filter(patient =>
+    patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.aadhar.includes(searchTerm) ||
+    patient.phone.includes(searchTerm)
+  )
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Reception</h1>
-        <p className="text-muted-foreground">Manage patient registration and fee collection</p>
-      </div>
-
-      <Tabs defaultValue="register" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
-          <TabsTrigger value="register" className="flex items-center gap-2">
-            <UserRound className="h-4 w-4" />
-            <span>Register Patient</span>
-          </TabsTrigger>
-          <TabsTrigger value="reports" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            <span>Reports</span>
-          </TabsTrigger>
-          <TabsTrigger value="fees" className="flex items-center gap-2">
-            <Printer className="h-4 w-4" />
-            <span>Fee Receipt</span>
-          </TabsTrigger>
+    <div className="reception-page">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="register">Register</TabsTrigger>
+          <TabsTrigger value="patients">Patients</TabsTrigger>
         </TabsList>
-
-        {/* Patient Registration Tab */}
         <TabsContent value="register">
           <Card>
             <CardHeader>
-              <CardTitle>Patient Registration</CardTitle>
-              <CardDescription>Register new patients and their partners/spouses</CardDescription>
+              <CardTitle>Register Patient</CardTitle>
             </CardHeader>
-            <form onSubmit={handleRegisterPatient}>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Patient Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="patientName">Full Name</Label>
-                      <Input id="patientName" placeholder="Enter patient name" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="patientAadhar">Aadhar Number</Label>
-                      <Input id="patientAadhar" placeholder="XXXX-XXXX-XXXX" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="patientPhone">Phone Number</Label>
-                      <Input id="patientPhone" placeholder="+91 XXXXX XXXXX" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="patientGender">Gender</Label>
-                      <Select>
-                        <SelectTrigger id="patientGender">
-                          <SelectValue placeholder="Select gender" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="patientAge">Age</Label>
-                      <Input id="patientAge" type="number" placeholder="Enter age" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="patientAddress">Address</Label>
-                      <Input id="patientAddress" placeholder="Enter address" />
-                    </div>
-                  </div>
+            <CardContent>
+              <form onSubmit={handleRegisterPatient} className="form">
+                <div className="form-group">
+                  <Label htmlFor="name">Name</Label>
+                  <Input id="name" value={patient.name} onChange={(e) => setPatient({ ...patient, name: e.target.value })} required />
                 </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Partner/Spouse Information</h3>
-                    <Button type="button" variant="outline" size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Partner
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="partnerName">Full Name</Label>
-                      <Input id="partnerName" placeholder="Enter partner name" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="partnerAadhar">Aadhar Number</Label>
-                      <Input id="partnerAadhar" placeholder="XXXX-XXXX-XXXX" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="partnerPhone">Phone Number</Label>
-                      <Input id="partnerPhone" placeholder="+91 XXXXX XXXXX" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="relationship">Relationship</Label>
-                      <Select>
-                        <SelectTrigger id="relationship">
-                          <SelectValue placeholder="Select relationship" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="spouse">Spouse</SelectItem>
-                          <SelectItem value="partner">Partner</SelectItem>
-                          <SelectItem value="relative">Relative</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                <div className="form-group">
+                  <Label htmlFor="aadhar">Aadhar</Label>
+                  <Input id="aadhar" value={patient.aadhar} onChange={(e) => setPatient({ ...patient, aadhar: e.target.value })} required />
                 </div>
-              </CardContent>
-              <CardFooter>
-                <Button type="submit">Register Patient</Button>
-              </CardFooter>
-            </form>
-          </Card>
-        </TabsContent>
-
-        {/* Reports Tab */}
-        <TabsContent value="reports">
-          <Card>
-            <CardHeader>
-              <CardTitle>Patient Reports</CardTitle>
-              <CardDescription>Manage and categorize patient reports</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search reports..." className="pl-8" />
+                <div className="form-group">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input id="phone" value={patient.phone} onChange={(e) => setPatient({ ...patient, phone: e.target.value })} required />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="flex items-center gap-2">
-                    <Filter className="h-4 w-4" />
-                    <span>Filter</span>
-                  </Button>
-                  <Button size="sm" className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    <span>Add Report</span>
-                  </Button>
+                <div className="form-group">
+                  <Label htmlFor="partnerName">Partner/Husband Name</Label>
+                  <Input id="partnerName" value={patient.partnerName} onChange={(e) => setPatient({ ...patient, partnerName: e.target.value })} required />
                 </div>
-              </div>
-
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Patient ID</TableHead>
-                    <TableHead>Patient Name</TableHead>
-                    <TableHead>Report Type</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <TableRow key={i}>
-                      <TableCell>P-{1000 + i}</TableCell>
-                      <TableCell>Patient {i}</TableCell>
-                      <TableCell>{["Blood Test", "X-Ray", "MRI", "CT Scan", "Ultrasound"][i - 1]}</TableCell>
-                      <TableCell>{new Date().toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${
-                            i % 3 === 0
-                              ? "bg-yellow-100 text-yellow-800"
-                              : i % 2 === 0
-                                ? "bg-green-100 text-green-800"
-                                : "bg-blue-100 text-blue-800"
-                          }`}
-                        >
-                          {i % 3 === 0 ? "Pending" : i % 2 === 0 ? "Completed" : "In Progress"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                <div className="form-group">
+                  <Label htmlFor="partnerAadhar">Partner/Husband Aadhar</Label>
+                  <Input id="partnerAadhar" value={patient.partnerAadhar} onChange={(e) => setPatient({ ...patient, partnerAadhar: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="partnerPhone">Partner/Husband Phone</Label>
+                  <Input id="partnerPhone" value={patient.partnerPhone} onChange={(e) => setPatient({ ...patient, partnerPhone: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <Label>Reports</Label>
+                  {reports.map((report, index) => (
+                    <div key={index} className="report-item">
+                      <Input
+                        placeholder="Report Label"
+                        value={report.label}
+                        onChange={(e) => handleReportChange(index, "label", e.target.value)}
+                        required
+                      />
+                      <Input
+                        type="file"
+                        onChange={(e) => handleReportChange(index, "file", e.target.files ? e.target.files[0] : null)}
+                        required
+                      />
+                      <Button type="button" onClick={() => handleRemoveReport(index)} className="remove-report-button">
+                        <Trash />
+                      </Button>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                  <Button type="button" onClick={handleAddReport} className="add-report-button">
+                    <Plus /> Add Report
+                  </Button>
+                </div>
+                <Button type="submit" className="submit-button">Register</Button>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Fee Receipt Tab */}
-        <TabsContent value="fees">
+        <TabsContent value="patients">
           <Card>
             <CardHeader>
-              <CardTitle>Fee Receipt</CardTitle>
-              <CardDescription>Generate and print fee receipts</CardDescription>
+              <CardTitle>Registered Patients</CardTitle>
             </CardHeader>
-            <form onSubmit={handleGenerateReceipt}>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="receiptPatientId">Patient ID</Label>
-                    <Input id="receiptPatientId" placeholder="Enter patient ID" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="receiptPatientName">Patient Name</Label>
-                    <Input id="receiptPatientName" placeholder="Enter patient name" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="receiptDate">Date</Label>
-                    <Input
-                      id="receiptDate"
-                      type="date"
-                      defaultValue={new Date().toISOString().split("T")[0]}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="receiptType">Receipt Type</Label>
-                    <Select>
-                      <SelectTrigger id="receiptType">
-                        <SelectValue placeholder="Select receipt type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="consultation">Consultation</SelectItem>
-                        <SelectItem value="test">Medical Test</SelectItem>
-                        <SelectItem value="procedure">Medical Procedure</SelectItem>
-                        <SelectItem value="medicine">Medicine</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+            <CardContent>
+              <Input
+                placeholder="Search patients..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+              {filteredPatients.length === 0 ? (
+                <p>No patients found.</p>
+              ) : (
+                <div className="patient-list">
+                  {filteredPatients.map((patient) => (
+                    <Card key={patient.id} className="patient-card" onClick={() => setSelectedPatient(patient)}>
+                      <CardContent>
+                        <p><strong>Name:</strong> {patient.name}</p>
+                        <p><strong>Aadhar:</strong> {patient.aadhar}</p>
+                        <p><strong>Phone:</strong> {patient.phone}</p>
+                        <p><strong>Partner/Husband Name:</strong> {patient.partnerName}</p>
+                        <p><strong>Partner/Husband Aadhar:</strong> {patient.partnerAadhar}</p>
+                        <p><strong>Partner/Husband Phone:</strong> {patient.partnerPhone}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Fee Details</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Rate (₹)</TableHead>
-                        <TableHead className="text-right">Amount (₹)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell>
-                          <Input placeholder="Enter description" />
-                        </TableCell>
-                        <TableCell>
-                          <Input type="number" defaultValue="1" min="1" />
-                        </TableCell>
-                        <TableCell>
-                          <Input type="number" defaultValue="500" min="0" />
-                        </TableCell>
-                        <TableCell className="text-right">₹500.00</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-right font-medium">
-                          Subtotal
-                        </TableCell>
-                        <TableCell className="text-right">₹500.00</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-right font-medium">
-                          Tax (18%)
-                        </TableCell>
-                        <TableCell className="text-right">₹90.00</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-right font-bold">
-                          Total
-                        </TableCell>
-                        <TableCell className="text-right font-bold">₹590.00</TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="paymentMethod">Payment Method</Label>
-                  <Select>
-                    <SelectTrigger id="paymentMethod">
-                      <SelectValue placeholder="Select payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="card">Card</SelectItem>
-                      <SelectItem value="upi">UPI</SelectItem>
-                      <SelectItem value="insurance">Insurance</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-              <CardFooter className="flex gap-2">
-                <Button type="submit">Generate Receipt</Button>
-                <Button type="button" variant="outline" className="flex items-center gap-2">
-                  <Printer className="h-4 w-4" />
-                  <span>Print Receipt</span>
-                </Button>
-              </CardFooter>
-            </form>
+              )}
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {selectedPatient && (
+        <Modal onClose={() => setSelectedPatient(null)}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Patient Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p><strong>ID:</strong> {selectedPatient.id}</p>
+              <p><strong>Name:</strong> {selectedPatient.name}</p>
+              <p><strong>Aadhar:</strong> {selectedPatient.aadhar}</p>
+              <p><strong>Phone:</strong> {selectedPatient.phone}</p>
+              <p><strong>Partner/Husband Name:</strong> {selectedPatient.partnerName}</p>
+              <p><strong>Partner/Husband Aadhar:</strong> {selectedPatient.partnerAadhar}</p>
+              <p><strong>Partner/Husband Phone:</strong> {selectedPatient.partnerPhone}</p>
+              <p><strong>Date of Creation:</strong> {new Date(selectedPatient.dateOfCreation).toLocaleString()}</p>
+              <p><strong>Reports:</strong></p>
+              <ul>
+                {selectedPatient.reports.map((report, index) => (
+                  <li key={index}>{report.label}</li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </Modal>
+      )}
     </div>
   )
 }
-

@@ -1,0 +1,46 @@
+.reception-page {
+    padding: 20px;
+  }
+  
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .report-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .add-report-button,
+  .remove-report-button,
+  .submit-button {
+    margin-top: 10px;
+  }
+  
+  .search-input {
+    margin-bottom: 20px;
+  }
+  
+  .patient-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  
+  .patient-card {
+    cursor: pointer;
+    width: 200px;
+  }
+  
+  .patient-card:hover {
+    background-color: #f0f0f0;
+  }
